@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SeAuto — Prototipo</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%}
+body{font-family:'IBM Plex Sans',sans-serif;background:#d8e4f0}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-thumb{background:#b0c0d4;border-radius:3px}
+input,select,textarea,button{font-family:inherit}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- ═══════════════════════════════════════════════ CLIENT APP ═══ -->
+<script type="text/babel">
+const C_VEHICLES = [
+  {id:1,placa:'ABJ-1583',marca:'BYD',modelo:'Yuan Pro',año:2026,color:'Azul',
+   status:'En reparación',ticket:'TK-2026-0023',tecnico:'Carlos Mendoza',ingreso:'11/01/26',
+   trabajos:['Puerta pos RH','Retrovisor RH','Guardafango del LH','Punta del LH','Moldura rueda post LH']},
+  {id:2,placa:'PCG-4421',marca:'Toyota',modelo:'Corolla',año:2022,color:'Blanco',
+   status:'Listo para entrega',ticket:'TK-2026-0018',tecnico:'Ana Torres',ingreso:'05/01/26',
+   trabajos:['Revisión de frenos','Cambio de aceite y filtro']},
+];
+const C_PROMOS = [
+  {id:1,title:'20% en alineación y balanceo',desc:'Válido hasta 28 Feb 2026',claimed:false},
+  {id:2,title:'Diagnóstico gratuito',desc:'Para vehículos nuevos ingresados',claimed:true},
+  {id:3,title:'3x2 en cambios de aceite',desc:'Hasta agotar stock',claimed:false},
+];
+const STS = {
+  received: {label:'Recibido',c:'#64748b',bg:'#f1f5f9'},
+  diagnosis:{label:'En diagnóstico',c:'#2563eb',bg:'#eff6ff'},
+  repair:   {label:'En reparación',c:'#ea580c',bg:'#fff7ed'},
+  ready:    {label:'Listo para entrega',c:'#16a34a',bg:'#f0fdf4'},
+  delivered:{label:'Entregado',c:'#15803d',bg:'#dcfce7'},
+};
+const STEPS = ['Recibido','Diagnóstico','Reparación','Listo','Entregado'];
+const STKEYS = ['received','diagnosis','repair','ready','delivered'];
+
+const Bdg = ({s}) => <span style={{fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:4,color:'#1d4ed8',background:'#eff6ff',whiteSpace:'nowrap'}}>{s}</span>;
+const CHeader = ({title,onBack}) => (
+  <div style={{background:'#1e3a5f',color:'white',padding:'10px 16px',display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+    {onBack && <button onClick={onBack} style={{background:'none',border:'none',color:'white',fontSize:18,cursor:'pointer',lineHeight:1,padding:0}}>←</button>}
+    <div><div style={{fontSize:9,opacity:.6,letterSpacing:1,textTransform:'uppercase'}}>SeAuto</div><div style={{fontSize:15,fontWeight:700}}>{title}</div></div>
+  </div>
+);
+const inp = {width:'100%',padding:'9px 12px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,boxSizing:'border-box'};
+const lbl = {fontSize:11,fontWeight:600,color:'#475569',display:'block',marginBottom:3};
+
+const LoginScreen = ({onLogin,isReg,toggle}) => {
+  const [f,sf] = React.useState({email:'',pwd:'',name:'',phone:''});
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,background:'#f8fafc'}}>
+      <div style={{textAlign:'center',marginBottom:24}}>
+        <div style={{width:52,height:52,background:'#1e3a5f',borderRadius:12,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 10px',fontSize:26}}>🚗</div>
+        <div style={{fontSize:22,fontWeight:800,color:'#1e3a5f',letterSpacing:'-0.5px'}}>SeAuto</div>
+        <div style={{fontSize:11,color:'#64748b'}}>Portal de clientes</div>
+      </div>
+      <div style={{background:'white',borderRadius:12,padding:20,width:'100%',boxShadow:'0 2px 12px rgba(0,0,0,.08)'}}>
+        <div style={{fontSize:14,fontWeight:700,color:'#1e293b',marginBottom:16}}>{isReg?'Crear cuenta':'Iniciar sesión'}</div>
+        {isReg && <>
+          <div style={{marginBottom:10}}><label style={lbl}>Nombre completo</label><input style={inp} value={f.name} onChange={e=>sf({...f,name:e.target.value})} placeholder="Juan Pérez"/></div>
+          <div style={{marginBottom:10}}><label style={lbl}>Teléfono</label><input style={inp} value={f.phone} onChange={e=>sf({...f,phone:e.target.value})} placeholder="0991234567"/></div>
+        </>}
+        <div style={{marginBottom:10}}><label style={lbl}>Correo electrónico</label><input style={inp} value={f.email} onChange={e=>sf({...f,email:e.target.value})} placeholder="correo@email.com" type="email"/></div>
+        <div style={{marginBottom:18}}><label style={lbl}>Contraseña</label><input style={inp} value={f.pwd} onChange={e=>sf({...f,pwd:e.target.value})} placeholder="••••••••" type="password"/></div>
+        <button onClick={onLogin} style={{width:'100%',background:'#1d4ed8',color:'white',border:'none',borderRadius:8,padding:11,fontSize:14,fontWeight:700,cursor:'pointer'}}>{isReg?'Registrarme':'Entrar'}</button>
+        <div style={{textAlign:'center',marginTop:14,fontSize:12,color:'#64748b'}}>
+          {isReg?'¿Ya tienes cuenta? ':'¿No tienes cuenta? '}
+          <span onClick={toggle} style={{color:'#2563eb',cursor:'pointer',fontWeight:600}}>{isReg?'Iniciar sesión':'Regístrate'}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const HomeScreen = ({vehicles,onSelect}) => (
+  <div style={{flex:1,overflowY:'auto'}}>
+    <CHeader title="Mis Vehículos"/>
+    <div style={{padding:14}}>
+      <div style={{fontSize:12,color:'#64748b',marginBottom:12}}>Toca un vehículo para ver el estado</div>
+      {vehicles.map(v => (
+        <div key={v.id} onClick={()=>onSelect(v)} style={{background:'white',borderRadius:10,padding:14,marginBottom:10,boxShadow:'0 1px 4px rgba(0,0,0,.07)',cursor:'pointer',borderLeft:'3px solid #2563eb'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+            <div>
+              <div style={{fontSize:14,fontWeight:700,color:'#1e293b'}}>{v.marca} {v.modelo}</div>
+              <div style={{fontSize:11,color:'#64748b',marginTop:2}}>Placa: {v.placa} · {v.año} · {v.color}</div>
+              <div style={{fontSize:11,color:'#94a3b8'}}>Ticket: {v.ticket}</div>
+            </div>
+            <Bdg s={v.status}/>
+          </div>
+          <div style={{fontSize:11,color:'#64748b',display:'flex',alignItems:'center',gap:5}}>
+            <div style={{width:5,height:5,borderRadius:'50%',background:'#2563eb',flexShrink:0}}/>
+            Técnico: {v.tecnico} · Ingreso: {v.ingreso}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const VehicleDetail = ({v,onBack}) => (
+    <div style={{flex:1,overflowY:'auto',background:'#f8fafc'}}>
+      <CHeader title={`${v.marca} ${v.modelo}`} onBack={onBack}/>
+      <div style={{padding:14}}>
+        <div style={{background:'#eff6ff',border:'1px solid #bfdbfe',borderRadius:9,padding:16,marginBottom:12}}>
+          <div style={{fontSize:9,fontWeight:700,color:'#3b82f6',textTransform:'uppercase',letterSpacing:1,marginBottom:6}}>Estado actual</div>
+          <div style={{fontSize:18,fontWeight:800,color:'#1e3a5f',marginBottom:4}}>{v.status}</div>
+          <div style={{fontSize:11,color:'#64748b'}}>Ticket {v.ticket} · Técnico: {v.tecnico}</div>
+        </div>
+        <div style={{background:'white',borderRadius:10,padding:14,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#1e293b',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Datos del vehículo</div>
+          {[['Placa',v.placa],['Marca / Modelo',`${v.marca} ${v.modelo}`],['Año',v.año],['Color',v.color],['Fecha ingreso',v.ingreso],['Técnico asignado',v.tecnico]].map(([k,val])=>(
+            <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #f1f5f9',fontSize:12}}>
+              <span style={{color:'#64748b'}}>{k}</span><span style={{fontWeight:600,color:'#1e293b'}}>{val}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{background:'white',borderRadius:10,padding:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#1e293b',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Trabajos registrados</div>
+          {v.trabajos.map((t,i)=>(
+            <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderBottom:'1px solid #f8fafc',fontSize:12,color:'#374151'}}>
+              <div style={{width:5,height:5,borderRadius:'50%',background:'#2563eb',flexShrink:0}}/>{t}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+);
+
+const SiniestroScreen = () => {
+  const [d,sd]=React.useState({placa:'',desc:'',seguro:'Sin seguro'});
+  const [photos,sp]=React.useState([]);
+  const [ok,sok]=React.useState(false);
+  if(ok) return (
+    <div style={{flex:1,display:'flex',flexDirection:'column'}}>
+      <CHeader title="Reportar Siniestro"/>
+      <div style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:24,textAlign:'center'}}>
+        <div style={{fontSize:44,marginBottom:12}}>✅</div>
+        <div style={{fontSize:15,fontWeight:700,color:'#16a34a',marginBottom:6}}>¡Solicitud enviada!</div>
+        <div style={{fontSize:12,color:'#64748b',marginBottom:20}}>Un técnico revisará las fotos y te enviará la valorización en breve.</div>
+        <button onClick={()=>{sok(false);sd({placa:'',desc:'',seguro:'Sin seguro'});sp([]);}} style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:8,padding:'9px 24px',fontSize:13,fontWeight:600,cursor:'pointer'}}>Nueva solicitud</button>
+      </div>
+    </div>
+  );
+  return (
+    <div style={{flex:1,overflowY:'auto'}}>
+      <CHeader title="Reportar Siniestro"/>
+      <div style={{padding:14}}>
+        <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:7,padding:10,marginBottom:14,fontSize:11,color:'#9a3412'}}>📷 Adjunta fotos del daño desde varios ángulos para una valorización precisa.</div>
+        <div style={{background:'white',borderRadius:10,padding:14,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{marginBottom:10}}><label style={lbl}>Placa del vehículo</label><input style={inp} value={d.placa} onChange={e=>sd({...d,placa:e.target.value})} placeholder="Ej. ABJ-1583"/></div>
+          <div style={{marginBottom:10}}><label style={lbl}>Descripción del daño</label><textarea style={{...inp,resize:'vertical',minHeight:72}} value={d.desc} onChange={e=>sd({...d,desc:e.target.value})} placeholder="Describe el daño o incidente..."/></div>
+          <div><label style={lbl}>Seguro / Broker</label>
+            <select style={inp} value={d.seguro} onChange={e=>sd({...d,seguro:e.target.value})}>
+              {['Sin seguro','TP Seguros','AIG Ecuador','Seguros Equinoccial'].map(x=><option key={x}>{x}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{background:'white',borderRadius:10,padding:14,marginBottom:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#1e293b',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Fotos del daño</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+            {photos.map((p,i)=>(
+              <div key={p} style={{aspectRatio:'1',background:'#e2e8f0',borderRadius:7,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:'#64748b',flexDirection:'column',gap:4}}>
+                <span style={{fontSize:18}}>📷</span>Foto {i+1}
+              </div>
+            ))}
+            <div onClick={()=>sp([...photos,Date.now()])} style={{aspectRatio:'1',border:'2px dashed #cbd5e1',borderRadius:7,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#94a3b8',gap:2}}>
+              <span style={{fontSize:18}}>+</span><span style={{fontSize:9}}>Agregar</span>
+            </div>
+          </div>
+        </div>
+        <button onClick={()=>sok(true)} style={{width:'100%',background:'#1d4ed8',color:'white',border:'none',borderRadius:8,padding:12,fontSize:14,fontWeight:700,cursor:'pointer'}}>Enviar para valorización</button>
+      </div>
+    </div>
+  );
+};
+
+const PromosScreen = () => {
+  const [pr,spr]=React.useState(C_PROMOS);
+  return (
+    <div style={{flex:1,overflowY:'auto'}}>
+      <CHeader title="Promociones"/>
+      <div style={{padding:14}}>
+        {pr.map(p=>(
+          <div key={p.id} style={{background:'white',borderRadius:10,padding:14,marginBottom:10,boxShadow:'0 1px 3px rgba(0,0,0,.06)',opacity:p.claimed?.8:1}}>
+            <div style={{fontSize:14,fontWeight:700,color:'#1e293b',marginBottom:3}}>{p.title}</div>
+            <div style={{fontSize:11,color:'#64748b',marginBottom:10}}>{p.desc}</div>
+            {p.claimed
+              ? <div style={{fontSize:11,color:'#16a34a',fontWeight:600,background:'#f0fdf4',padding:'5px 10px',borderRadius:5,display:'inline-block'}}>✓ Canjeada</div>
+              : <button onClick={()=>spr(pr.map(x=>x.id===p.id?{...x,claimed:true}:x))} style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:6,padding:'7px 14px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Reclamar promoción</button>
+            }
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const CuponesScreen = () => {
+  const [code,sc]=React.useState('');
+  const [st,ss]=React.useState(null);
+  return (
+    <div style={{flex:1,overflowY:'auto'}}>
+      <CHeader title="Cupones"/>
+      <div style={{padding:14}}>
+        <div style={{background:'white',borderRadius:10,padding:18,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#1e293b',marginBottom:4}}>Canjear código</div>
+          <div style={{fontSize:11,color:'#64748b',marginBottom:14}}>Ingresa el código para aplicar tu descuento.</div>
+          <input value={code} onChange={e=>{sc(e.target.value.toUpperCase());ss(null);}} placeholder="Ej. SEAUTO10"
+            style={{width:'100%',padding:'11px',border:`2px solid ${st==='ok'?'#16a34a':st==='err'?'#dc2626':'#e2e8f0'}`,borderRadius:7,fontSize:15,fontWeight:700,letterSpacing:2,textAlign:'center',boxSizing:'border-box',fontFamily:'monospace'}}/>
+          {st==='ok'&&<div style={{marginTop:6,color:'#16a34a',fontSize:12,fontWeight:600}}>✓ Cupón válido — descuento aplicado</div>}
+          {st==='err'&&<div style={{marginTop:6,color:'#dc2626',fontSize:12,fontWeight:600}}>✗ Código inválido o expirado</div>}
+          <button onClick={()=>ss(['SEAUTO10','BIENVENIDO20','VERANO15'].includes(code)?'ok':'err')}
+            style={{width:'100%',marginTop:12,background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:11,fontSize:13,fontWeight:700,cursor:'pointer'}}>Validar cupón</button>
+        </div>
+        <div style={{background:'white',borderRadius:10,padding:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#1e293b',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Cupones activos</div>
+          {[{code:'BIENVENIDO20',desc:'20% descuento primer servicio',vence:'30/03/26'},{code:'VERANO15',desc:'15% en servicios de temporada',vence:'28/02/26'}].map(c=>(
+            <div key={c.code} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid #f1f5f9'}}>
+              <div><div style={{fontSize:12,fontWeight:700,color:'#1e3a5f',fontFamily:'monospace'}}>{c.code}</div><div style={{fontSize:11,color:'#64748b'}}>{c.desc}</div></div>
+              <div style={{fontSize:10,color:'#ea580c',fontWeight:600}}>Vence {c.vence}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ContactoScreen = () => (
+  <div style={{flex:1,overflowY:'auto'}}>
+    <CHeader title="Contacto"/>
+    <div style={{padding:14}}>
+      <div style={{background:'white',borderRadius:10,padding:14,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+        <div style={{fontSize:13,fontWeight:700,color:'#1e293b',marginBottom:12}}>Atención al cliente</div>
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          <div style={{display:'flex',alignItems:'center',gap:12,background:'#f0fdf4',border:'1px solid #bbf7d0',borderRadius:8,padding:12,cursor:'pointer'}}>
+            <div style={{width:34,height:34,background:'#16a34a',borderRadius:7,display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>💬</div>
+            <div><div style={{fontSize:13,fontWeight:700,color:'#15803d'}}>WhatsApp</div><div style={{fontSize:11,color:'#64748b'}}>+593 99 123 4567</div></div>
+          </div>
+          {[['📞','Teléfono','(02) 345-6789'],['📧','Correo','info@seauto.com.ec'],['📍','Dirección','Av. 10 de Agosto N23-45, Quito']].map(([ic,lb,val])=>(
+            <div key={lb} style={{display:'flex',alignItems:'center',gap:12,background:'#f8fafc',borderRadius:8,padding:12}}>
+              <div style={{fontSize:18,width:34,textAlign:'center'}}>{ic}</div>
+              <div><div style={{fontSize:12,fontWeight:600,color:'#1e293b'}}>{lb}</div><div style={{fontSize:11,color:'#64748b'}}>{val}</div></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{background:'white',borderRadius:10,padding:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+        <div style={{fontSize:10,fontWeight:700,color:'#1e293b',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Redes sociales</div>
+        <div style={{display:'flex',gap:10}}>
+          {[['Facebook','#1877f2'],['Instagram','#e4405f'],['YouTube','#ff0000']].map(([lb,col])=>(
+            <div key={lb} style={{flex:1,background:col+'18',borderRadius:7,padding:'10px 4px',textAlign:'center',cursor:'pointer'}}>
+              <div style={{fontSize:11,fontWeight:700,color:col}}>{lb}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const BottomNav = ({tab,onChange}) => {
+  const tabs=[['home','🏠','Inicio'],['siniestro','📸','Siniestro'],['promos','🏷','Promos'],['cupones','🎟','Cupones'],['contacto','📞','Contacto']];
+  return (
+    <div style={{background:'white',borderTop:'1px solid #e2e8f0',display:'flex',flexShrink:0}}>
+      {tabs.map(([id,ic,lb])=>(
+        <button key={id} onClick={()=>onChange(id)} style={{flex:1,border:'none',background:'none',padding:'7px 0',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+          <span style={{fontSize:17}}>{ic}</span>
+          <span style={{fontSize:9,fontWeight:tab===id?700:400,color:tab===id?'#1d4ed8':'#94a3b8'}}>{lb}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+const ClientApp = () => {
+  const [loggedIn,sli]=React.useState(false);
+  const [isReg,sir]=React.useState(false);
+  const [tab,st]=React.useState('home');
+  const [sel,ss]=React.useState(null);
+  if(!loggedIn) return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflowY:'auto'}}>
+      <LoginScreen onLogin={()=>sli(true)} isReg={isReg} toggle={()=>sir(!isReg)}/>
+    </div>
+  );
+  if(sel&&tab==='home') return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflowY:'hidden'}}>
+      <VehicleDetail v={sel} onBack={()=>ss(null)}/>
+      <BottomNav tab={tab} onChange={t=>{st(t);ss(null);}}/>
+    </div>
+  );
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      {tab==='home'&&<HomeScreen vehicles={C_VEHICLES} onSelect={ss}/>}
+      {tab==='siniestro'&&<SiniestroScreen/>}
+      {tab==='promos'&&<PromosScreen/>}
+      {tab==='cupones'&&<CuponesScreen/>}
+      {tab==='contacto'&&<ContactoScreen/>}
+      <BottomNav tab={tab} onChange={t=>{st(t);ss(null);}}/>
+    </div>
+  );
+};
+window.ClientApp = ClientApp;
+</script>
+
+<!-- ═══════════════════════════════════════════════ ADMIN APP ═══ -->
+<script type="text/babel">
+const A_VEH = [
+  {id:1,ticket:'TK-2026-0023',placa:'ABJ-1583',cliente:'Grey Pullice',marca:'BYD',modelo:'Yuan Pro',año:2026,color:'Azul',tecnico:'Carlos Mendoza',status:'En reparación',ingreso:'11/01/26',seguro:'TP',broker:'TP Seguros'},
+  {id:2,ticket:'TK-2026-0024',placa:'PCG-4421',cliente:'Ana Mora',marca:'Toyota',modelo:'Corolla',año:2022,color:'Blanco',tecnico:'Ana Torres',status:'Listo para entrega',ingreso:'12/01/26',seguro:'',broker:''},
+  {id:3,ticket:'TK-2026-0025',placa:'MRT-9012',cliente:'Luis Vega',marca:'Chevrolet',modelo:'Aveo',año:2020,color:'Rojo',tecnico:'—',status:'Recibido',ingreso:'13/01/26',seguro:'AIG',broker:'AIG Ecuador'},
+  {id:4,ticket:'TK-2026-0020',placa:'STZ-2234',cliente:'María Soto',marca:'Hyundai',modelo:'Tucson',año:2023,color:'Gris',tecnico:'Carlos Mendoza',status:'En diagnóstico',ingreso:'08/01/26',seguro:'',broker:''},
+  {id:5,ticket:'TK-2026-0015',placa:'KFP-7751',cliente:'Pedro Alcívar',marca:'Kia',modelo:'Sportage',año:2021,color:'Negro',tecnico:'Ana Torres',status:'Entregado',ingreso:'02/01/26',seguro:'Equinoccial',broker:'Equinoccial'},
+];
+const BRKRS = [
+  {id:1,nombre:'TP Seguros',contacto:'siniestros@tpseguros.com',tel:'02 345-0011',activo:true},
+  {id:2,nombre:'AIG Ecuador',contacto:'aig.ec@aig.com',tel:'02 345-9900',activo:true},
+  {id:3,nombre:'Seguros Equinoccial',contacto:'siniestros@equinoccial.com',tel:'02 399-8800',activo:false},
+];
+const AS = {received:{label:'Recibido',c:'#64748b',bg:'#f1f5f9'},diagnosis:{label:'En diagnóstico',c:'#2563eb',bg:'#eff6ff'},repair:{label:'En reparación',c:'#ea580c',bg:'#fff7ed'},ready:{label:'Listo p/entrega',c:'#16a34a',bg:'#f0fdf4'},delivered:{label:'Entregado',c:'#15803d',bg:'#dcfce7'}};
+const ABadge = ({s}) => <span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:3,color:'#1d4ed8',background:'#eff6ff',whiteSpace:'nowrap'}}>{s}</span>;
+const ai = {padding:'7px 10px',border:'1px solid #e2e8f0',borderRadius:5,fontSize:12,fontFamily:'IBM Plex Sans,sans-serif',width:'100%',boxSizing:'border-box'};
+const al = {fontSize:11,fontWeight:600,color:'#64748b',display:'block',marginBottom:3};
+
+const AdminSidebar = ({active,onChange}) => {
+  const items=[['dashboard','▦','Dashboard'],['vehiculos','🚗','Vehículos'],['proformas','📄','Proformas'],['brokers','🛡','Brokers / Seguros'],['notifs','🔔','Notificaciones'],['cupones','🎟','Cupones'],['usuarios','👥','Usuarios']];
+  return (
+    <div style={{width:210,background:'#1e3a5f',minHeight:'100%',display:'flex',flexDirection:'column',flexShrink:0}}>
+      <div style={{padding:'18px 16px 14px',borderBottom:'1px solid rgba(255,255,255,.1)'}}>
+        <div style={{fontSize:20,fontWeight:800,color:'white',letterSpacing:'-0.5px'}}>SeAuto</div>
+        <div style={{fontSize:10,color:'rgba(255,255,255,.45)',marginTop:2,textTransform:'uppercase',letterSpacing:1}}>Administrador</div>
+      </div>
+      <nav style={{flex:1,padding:'6px 0'}}>
+        {items.map(([id,ic,lb])=>(
+          <div key={id} onClick={()=>onChange(id)} style={{display:'flex',alignItems:'center',gap:9,padding:'9px 16px',cursor:'pointer',background:active===id?'rgba(255,255,255,.12)':'transparent',borderLeft:`3px solid ${active===id?'#60a5fa':'transparent'}`,color:active===id?'white':'rgba(255,255,255,.6)',fontSize:13,fontWeight:active===id?600:400,transition:'all .15s'}}>
+            <span style={{fontSize:15}}>{ic}</span>{lb}
+          </div>
+        ))}
+      </nav>
+      <div style={{padding:'10px 16px',borderTop:'1px solid rgba(255,255,255,.08)',fontSize:11,color:'rgba(255,255,255,.3)'}}>v1.0 · Abr 2026</div>
+    </div>
+  );
+};
+
+const AdminDash = ({vehicles}) => {
+  const st=[['En taller',vehicles.filter(v=>v.status!=='Entregado').length,'#2563eb'],['Listos',vehicles.filter(v=>v.status==='Listo para entrega').length,'#16a34a'],['Recibidos',vehicles.filter(v=>v.status==='Recibido').length,'#ea580c'],['Entregados',vehicles.filter(v=>v.status==='Entregado').length,'#64748b']];
+  return (
+    <div style={{padding:22}}>
+      <div style={{fontSize:18,fontWeight:700,color:'#1e293b',marginBottom:18}}>Dashboard</div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:14,marginBottom:22}}>
+        {st.map(([lb,val,col])=>(
+          <div key={lb} style={{background:'white',borderRadius:9,padding:18,boxShadow:'0 1px 4px rgba(0,0,0,.06)',borderTop:`3px solid ${col}`}}>
+            <div style={{fontSize:28,fontWeight:800,color:col}}>{val}</div>
+            <div style={{fontSize:11,color:'#64748b',marginTop:3}}>{lb}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{background:'white',borderRadius:9,padding:18,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+        <div style={{fontSize:13,fontWeight:700,color:'#1e293b',marginBottom:14}}>Vehículos en sistema</div>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+          <thead><tr style={{borderBottom:'2px solid #f1f5f9'}}>{['Ticket','Vehículo','Cliente','Técnico','Estado'].map(h=><th key={h} style={{textAlign:'left',padding:'6px 8px',color:'#64748b',fontWeight:600,fontSize:11}}>{h}</th>)}</tr></thead>
+          <tbody>
+            {vehicles.map(v=>(
+              <tr key={v.id} style={{borderBottom:'1px solid #f8fafc'}}>
+                <td style={{padding:'8px',color:'#1d4ed8',fontWeight:600,fontSize:11}}>{v.ticket}</td>
+                <td style={{padding:'8px',color:'#1e293b'}}>{v.marca} {v.modelo} <span style={{color:'#94a3b8',fontSize:10}}>· {v.placa}</span></td>
+                <td style={{padding:'8px',color:'#374151'}}>{v.cliente}</td>
+                <td style={{padding:'8px',color:'#374151'}}>{v.tecnico}</td>
+                <td style={{padding:'8px'}}><ABadge s={v.status}/></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const VehAdmin = ({vehicles,onSC}) => {
+  const [flt,sf]=React.useState('');
+  const [eid,se]=React.useState(null);
+  const [editVal,sev]=React.useState('');
+  const fv=vehicles.filter(v=>!flt||v.placa.toLowerCase().includes(flt.toLowerCase())||v.cliente.toLowerCase().includes(flt.toLowerCase()));
+  return (
+    <div style={{padding:22}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+        <div style={{fontSize:18,fontWeight:700,color:'#1e293b'}}>Vehículos en taller</div>
+        <button style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:'7px 14px',fontSize:12,fontWeight:600,cursor:'pointer'}}>+ Nuevo ingreso</button>
+      </div>
+      <input value={flt} onChange={e=>sf(e.target.value)} placeholder="Buscar por placa o cliente..." style={{width:280,padding:'7px 11px',border:'1px solid #e2e8f0',borderRadius:7,fontSize:12,marginBottom:14}}/>
+      <div style={{background:'white',borderRadius:9,boxShadow:'0 1px 4px rgba(0,0,0,.06)',overflow:'hidden'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+          <thead><tr style={{background:'#f8fafc',borderBottom:'2px solid #e2e8f0'}}>
+            {['Ticket','Placa','Cliente','Vehículo','Broker','Técnico','Estado','Acción'].map(h=><th key={h} style={{textAlign:'left',padding:'9px 10px',color:'#64748b',fontWeight:600,fontSize:10,textTransform:'uppercase'}}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {fv.map(v=>(
+              <tr key={v.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                <td style={{padding:'9px 10px',color:'#1d4ed8',fontWeight:600,fontSize:11}}>{v.ticket}</td>
+                <td style={{padding:'9px 10px',fontWeight:700}}>{v.placa}</td>
+                <td style={{padding:'9px 10px'}}>{v.cliente}</td>
+                <td style={{padding:'9px 10px',color:'#374151'}}>{v.marca} {v.modelo} <span style={{color:'#94a3b8'}}>· {v.año}</span></td>
+                <td style={{padding:'9px 10px',color:'#64748b'}}>{v.broker||'—'}</td>
+                <td style={{padding:'9px 10px'}}>{v.tecnico}</td>
+                <td style={{padding:'9px 10px'}}>
+                  {eid===v.id
+                    ? <input value={editVal} onChange={e=>sev(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){onSC(v.id,editVal);se(null);}}} autoFocus
+                        style={{fontSize:11,padding:'3px 8px',border:'1px solid #2563eb',borderRadius:4,width:160}} placeholder="Escribir estado..."/>
+                    : <ABadge s={v.status}/>
+                  }
+                </td>
+                <td style={{padding:'9px 10px'}}>
+                  <div style={{display:'flex',gap:4}}>
+                    {eid===v.id
+                      ? <><button onClick={()=>{onSC(v.id,editVal);se(null);}} style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:5,padding:'3px 9px',fontSize:11,cursor:'pointer'}}>OK</button>
+                         <button onClick={()=>se(null)} style={{background:'none',border:'1px solid #e2e8f0',borderRadius:5,padding:'3px 8px',fontSize:11,cursor:'pointer'}}>✕</button></>
+                      : <button onClick={()=>{se(v.id);sev(v.status);}} style={{background:'none',border:'1px solid #e2e8f0',borderRadius:5,padding:'3px 9px',fontSize:11,cursor:'pointer',color:'#374151'}}>Editar</button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const ProformaAdmin = ({vehicles,brokers}) => {
+  const [sv,ssv]=React.useState(A_VEH[0]);
+  const [sb,ssb]=React.useState(BRKRS[0]);
+  const [items,si]=React.useState([
+    {id:1,cod:'RAP',desc:'Puerta pos RH',daño:'B',precio:0},
+    {id:2,cod:'CAP',desc:'Retrovisor RH',daño:'M',precio:0},
+    {id:3,cod:'RDP',desc:'Guardafango del LH',daño:'A',precio:95},
+    {id:4,cod:'RDP',desc:'Punta del LH',daño:'M',precio:110},
+    {id:5,cod:'RAP',desc:'Moldura rueda post LH',daño:'C',precio:21},
+    {id:6,cod:'CAL',desc:'Calibración sensor ADAS',daño:'',precio:90},
+    {id:7,cod:'DES',desc:'Reencarpetización de vehículo',daño:'',precio:120},
+  ]);
+  const [obs,so]=React.useState('');
+  const upd=(id,k,v)=>si(items.map(it=>it.id===id?{...it,[k]:v}:it));
+  const sub=items.reduce((s,i)=>s+(parseFloat(i.precio)||0),0);
+  const iva=sub*.15;
+  return (
+    <div style={{padding:22,overflowY:'auto'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+        <div style={{fontSize:18,fontWeight:700,color:'#1e293b'}}>Nueva Proforma</div>
+        <div style={{display:'flex',gap:8}}>
+          <button style={{background:'white',color:'#374151',border:'1px solid #e2e8f0',borderRadius:7,padding:'7px 14px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Guardar borrador</button>
+          <button style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:'7px 14px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Emitir proforma</button>
+        </div>
+      </div>
+      <div style={{background:'white',borderRadius:9,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,paddingBottom:16,borderBottom:'2px solid #1e3a5f'}}>
+          <div><div style={{fontSize:20,fontWeight:800,color:'#1e3a5f',letterSpacing:'-0.5px'}}>SEAUTO</div><div style={{fontSize:9,color:'#64748b',letterSpacing:1,textTransform:'uppercase'}}>Taller Automotriz</div></div>
+          <div style={{textAlign:'right'}}><div style={{fontSize:10,color:'#64748b',textTransform:'uppercase',letterSpacing:1}}>Proforma</div><div style={{fontSize:22,fontWeight:800,color:'white',background:'#1e3a5f',padding:'2px 14px',borderRadius:4,marginTop:2}}>#6233</div></div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}} key={sv?.id}>
+          <div><label style={al}>Fecha</label><input style={ai} defaultValue="21/01/26"/></div>
+          <div><label style={al}>Vehículo</label>
+            <select style={ai} value={sv?.id} onChange={e=>ssv(A_VEH.find(v=>v.id===parseInt(e.target.value)))}>
+              {A_VEH.map(v=><option key={v.id} value={v.id}>{v.placa} — {v.cliente}</option>)}
+            </select>
+          </div>
+          <div><label style={al}>Broker / Seguro</label>
+            <select style={ai} onChange={e=>ssb(BRKRS.find(b=>b.id===parseInt(e.target.value)))}>
+              {BRKRS.map(b=><option key={b.id} value={b.id}>{b.nombre}</option>)}
+            </select>
+          </div>
+          <div><label style={al}>Siniestro Nº</label><input style={ai} placeholder="Número de siniestro"/></div>
+          <div><label style={al}>Cliente</label><input style={ai} defaultValue={sv?.cliente}/></div>
+          <div><label style={al}>CI / RUC</label><input style={ai} placeholder="0100000000"/></div>
+          <div><label style={al}>Placa</label><input style={ai} defaultValue={sv?.placa}/></div>
+          <div><label style={al}>Marca / Modelo</label><input style={ai} defaultValue={`${sv?.marca} ${sv?.modelo}`}/></div>
+          <div><label style={al}>Color</label><input style={ai} defaultValue={sv?.color}/></div>
+          <div><label style={al}>Año</label><input style={ai} defaultValue={sv?.año}/></div>
+          <div><label style={al}>Km</label><input style={ai} placeholder="0"/></div>
+          <div><label style={al}>Técnico</label><input style={ai} defaultValue={sv?.tecnico}/></div>
+        </div>
+        <div style={{border:'1px solid #e2e8f0',borderRadius:6,overflow:'hidden',marginBottom:12}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+            <thead><tr style={{background:'#1d4ed8',color:'white'}}>
+              <th style={{padding:'7px 8px',textAlign:'left',width:32}}>#</th>
+              <th style={{padding:'7px 8px',textAlign:'left',width:52}}>CÓD</th>
+              <th style={{padding:'7px 8px',textAlign:'left'}}>DESCRIPCIÓN DE TRABAJOS</th>
+              <th style={{padding:'7px 8px',textAlign:'center',width:55}}>DAÑO</th>
+              <th style={{padding:'7px 8px',textAlign:'right',width:80}}>PRECIO</th>
+            </tr></thead>
+            <tbody>
+              {items.map((it,i)=>(
+                <tr key={it.id} style={{borderBottom:'1px solid #f1f5f9',background:i%2?'#fafafa':'white'}}>
+                  <td style={{padding:'5px 8px',color:'#94a3b8'}}>{i+1}</td>
+                  <td style={{padding:'4px 8px'}}><input value={it.cod} onChange={e=>upd(it.id,'cod',e.target.value)} style={{...ai,width:44,padding:'3px 5px'}}/></td>
+                  <td style={{padding:'4px 8px'}}><input value={it.desc} onChange={e=>upd(it.id,'desc',e.target.value)} style={{...ai,padding:'3px 6px'}}/></td>
+                  <td style={{padding:'4px 8px',textAlign:'center'}}>
+                    <select value={it.daño} onChange={e=>upd(it.id,'daño',e.target.value)} style={{...ai,width:42,padding:'3px 4px',textAlign:'center'}}>
+                      {['','C','B','M','A'].map(d=><option key={d} value={d}>{d}</option>)}
+                    </select>
+                  </td>
+                  <td style={{padding:'4px 8px'}}><input type="number" value={it.precio} onChange={e=>upd(it.id,'precio',e.target.value)} style={{...ai,textAlign:'right',padding:'3px 6px'}}/></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',marginBottom:14}}>
+          <button onClick={()=>si([...items,{id:Date.now(),cod:'',desc:'',daño:'',precio:0}])} style={{background:'none',border:'1px dashed #cbd5e1',borderRadius:5,padding:'5px 12px',fontSize:11,cursor:'pointer',color:'#64748b'}}>+ Agregar línea</button>
+          <div>
+            {[['SUBTOTAL',sub],['IVA 15%',iva],['TOTAL',sub+iva]].map(([lb,val])=>(
+              <div key={lb} style={{display:'flex',gap:20,justifyContent:'flex-end',marginBottom:2}}>
+                <span style={{fontSize:11,fontWeight:600,color:'#64748b',width:80,textAlign:'right'}}>{lb}:</span>
+                <span style={{fontSize:11,fontWeight:lb==='TOTAL'?800:400,color:lb==='TOTAL'?'#1e3a5f':'#374151',width:70,textAlign:'right'}}>${val.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{marginBottom:10}}>
+          <label style={al}>Observaciones y notas</label>
+          <textarea value={obs} onChange={e=>so(e.target.value)} style={{width:'100%',padding:'7px',border:'1px solid #e2e8f0',borderRadius:5,fontSize:11,resize:'vertical',minHeight:52,boxSizing:'border-box',fontFamily:'inherit'}} placeholder="Notas adicionales..."/>
+        </div>
+        <div style={{padding:'7px 10px',background:'#fff7ed',borderRadius:5,fontSize:9,color:'#9a3412',textAlign:'center',fontWeight:700,letterSpacing:.3}}>
+          SOMOS OBLIGADOS A LLEVAR CONTABILIDAD POR LO QUE TODO TRABAJO DEBE SER FACTURADO, EL VALOR ACORDADO SERÁ MÁS IVA.
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const BrokersAdmin = () => {
+  const [bk,sb]=React.useState(BRKRS);
+  const [show,ss]=React.useState(false);
+  const [n,sn]=React.useState({nombre:'',contacto:'',tel:''});
+  return (
+    <div style={{padding:22}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+        <div style={{fontSize:18,fontWeight:700,color:'#1e293b'}}>Brokers / Seguros</div>
+        <button onClick={()=>ss(!show)} style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:'7px 14px',fontSize:12,fontWeight:600,cursor:'pointer'}}>+ Agregar broker</button>
+      </div>
+      {show&&(
+        <div style={{background:'white',borderRadius:9,padding:18,marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'1px solid #bfdbfe'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:12}}>
+            {[['Nombre',n.nombre,v=>sn({...n,nombre:v})],['Email',n.contacto,v=>sn({...n,contacto:v})],['Teléfono',n.tel,v=>sn({...n,tel:v})]].map(([lb,val,fn])=>(
+              <div key={lb}><label style={al}>{lb}</label><input style={ai} value={val} onChange={e=>fn(e.target.value)}/></div>
+            ))}
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={()=>{if(n.nombre){sb([...bk,{...n,id:Date.now(),activo:true}]);sn({nombre:'',contacto:'',tel:''});ss(false);}}} style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:6,padding:'7px 18px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Guardar</button>
+            <button onClick={()=>ss(false)} style={{background:'none',border:'1px solid #e2e8f0',borderRadius:6,padding:'7px 18px',fontSize:12,cursor:'pointer'}}>Cancelar</button>
+          </div>
+        </div>
+      )}
+      <div style={{background:'white',borderRadius:9,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+          <thead><tr style={{background:'#f8fafc',borderBottom:'2px solid #e2e8f0'}}>
+            {['Nombre','Email / Contacto','Teléfono','Estado',''].map(h=><th key={h} style={{textAlign:'left',padding:'9px 14px',color:'#64748b',fontWeight:600,fontSize:10,textTransform:'uppercase'}}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {bk.map(b=>(
+              <tr key={b.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                <td style={{padding:'11px 14px',fontWeight:700,color:'#1e293b'}}>{b.nombre}</td>
+                <td style={{padding:'11px 14px',color:'#64748b'}}>{b.contacto}</td>
+                <td style={{padding:'11px 14px',color:'#64748b'}}>{b.tel}</td>
+                <td style={{padding:'11px 14px'}}><span style={{fontSize:11,fontWeight:600,padding:'2px 8px',borderRadius:4,color:b.activo?'#16a34a':'#64748b',background:b.activo?'#f0fdf4':'#f1f5f9'}}>{b.activo?'Activo':'Inactivo'}</span></td>
+                <td style={{padding:'11px 14px'}}><button onClick={()=>sb(bk.map(x=>x.id===b.id?{...x,activo:!x.activo}:x))} style={{background:'none',border:'1px solid #e2e8f0',borderRadius:5,padding:'3px 9px',fontSize:11,cursor:'pointer'}}>{b.activo?'Desactivar':'Activar'}</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const NotifsAdmin = () => {
+  const [t,st]=React.useState(''); const [m,sm]=React.useState('');
+  const [sent,ss]=React.useState([
+    {id:1,title:'Promoción de verano',msg:'20% de descuento en alineación y balanceo',date:'15/01/26',n:42},
+    {id:2,title:'Nuevo servicio disponible',msg:'Escáner electrónico disponible para todos los modelos',date:'10/01/26',n:38},
+  ]);
+  const send=()=>{if(t&&m){ss([{id:Date.now(),title:t,msg:m,date:'21/01/26',n:47},...sent]);st('');sm('');}};
+  return (
+    <div style={{padding:22}}>
+      <div style={{fontSize:18,fontWeight:700,color:'#1e293b',marginBottom:18}}>Notificaciones y Promociones</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:18}}>
+        <div style={{background:'white',borderRadius:9,padding:18,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#1e293b',marginBottom:14}}>Enviar notificación</div>
+          <div style={{marginBottom:10}}><label style={al}>Título</label><input style={ai} value={t} onChange={e=>st(e.target.value)} placeholder="Ej. Oferta de temporada"/></div>
+          <div style={{marginBottom:10}}><label style={al}>Mensaje</label><textarea style={{...ai,resize:'vertical',minHeight:88}} value={m} onChange={e=>sm(e.target.value)} placeholder="Escribe el mensaje para los clientes..."/></div>
+          <div style={{marginBottom:14}}><label style={al}>Destinatarios</label>
+            <select style={ai}><option>Todos los clientes (47)</option><option>Clientes con vehículo en taller</option><option>Clientes activos este mes</option></select>
+          </div>
+          <button onClick={send} style={{width:'100%',background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:11,fontSize:13,fontWeight:700,cursor:'pointer'}}>Enviar notificación</button>
+        </div>
+        <div style={{background:'white',borderRadius:9,padding:18,boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#1e293b',marginBottom:14}}>Enviadas recientemente</div>
+          {sent.map(n=>(
+            <div key={n.id} style={{borderBottom:'1px solid #f1f5f9',paddingBottom:11,marginBottom:11}}>
+              <div style={{fontSize:13,fontWeight:600,color:'#1e293b'}}>{n.title}</div>
+              <div style={{fontSize:11,color:'#64748b',marginTop:2}}>{n.msg}</div>
+              <div style={{display:'flex',gap:12,marginTop:5}}><span style={{fontSize:10,color:'#94a3b8'}}>{n.date}</span><span style={{fontSize:10,color:'#2563eb',fontWeight:600}}>{n.n} destinatarios</span></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const CuponesAdmin = () => {
+  const [cp,scp]=React.useState([
+    {id:1,code:'SEAUTO10',desc:'10% descuento general',uses:8,max:100,vence:'28/02/26',activo:true},
+    {id:2,code:'BIENVENIDO20',desc:'20% primer servicio',uses:23,max:50,vence:'31/03/26',activo:true},
+    {id:3,code:'VERANO15',desc:'15% servicios temporada',uses:50,max:50,vence:'31/01/26',activo:false},
+  ]);
+  const [show,ss]=React.useState(false);
+  const [n,sn]=React.useState({code:'',desc:'',max:100,vence:''});
+  return (
+    <div style={{padding:22}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+        <div style={{fontSize:18,fontWeight:700,color:'#1e293b'}}>Cupones y Códigos</div>
+        <button onClick={()=>ss(!show)} style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:'7px 14px',fontSize:12,fontWeight:600,cursor:'pointer'}}>+ Nuevo cupón</button>
+      </div>
+      {show&&(
+        <div style={{background:'white',borderRadius:9,padding:18,marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,.06)',border:'1px solid #bfdbfe'}}>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 2fr 1fr 1fr',gap:10,marginBottom:12}}>
+            <div><label style={al}>Código</label><input style={{...ai,fontFamily:'monospace',textTransform:'uppercase'}} value={n.code} onChange={e=>sn({...n,code:e.target.value.toUpperCase()})}/></div>
+            <div><label style={al}>Descripción</label><input style={ai} value={n.desc} onChange={e=>sn({...n,desc:e.target.value})}/></div>
+            <div><label style={al}>Usos máx.</label><input type="number" style={ai} value={n.max} onChange={e=>sn({...n,max:parseInt(e.target.value)||0})}/></div>
+            <div><label style={al}>Vence</label><input style={ai} value={n.vence} onChange={e=>sn({...n,vence:e.target.value})} placeholder="DD/MM/AA"/></div>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <button onClick={()=>{if(n.code){scp([...cp,{...n,id:Date.now(),uses:0,activo:true}]);sn({code:'',desc:'',max:100,vence:''});ss(false);}}} style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:6,padding:'7px 18px',fontSize:12,fontWeight:600,cursor:'pointer'}}>Crear</button>
+            <button onClick={()=>ss(false)} style={{background:'none',border:'1px solid #e2e8f0',borderRadius:6,padding:'7px 18px',fontSize:12,cursor:'pointer'}}>Cancelar</button>
+          </div>
+        </div>
+      )}
+      <div style={{background:'white',borderRadius:9,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+          <thead><tr style={{background:'#f8fafc',borderBottom:'2px solid #e2e8f0'}}>
+            {['Código','Descripción','Uso','Vence','Estado'].map(h=><th key={h} style={{textAlign:'left',padding:'9px 14px',color:'#64748b',fontWeight:600,fontSize:10,textTransform:'uppercase'}}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {cp.map(c=>(
+              <tr key={c.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                <td style={{padding:'11px 14px',fontFamily:'monospace',fontWeight:700,color:'#1e3a5f'}}>{c.code}</td>
+                <td style={{padding:'11px 14px',color:'#374151'}}>{c.desc}</td>
+                <td style={{padding:'11px 14px'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:7}}>
+                    <div style={{height:4,width:70,background:'#e2e8f0',borderRadius:2}}><div style={{height:'100%',width:`${Math.min((c.uses/c.max)*100,100)}%`,background:c.uses>=c.max?'#dc2626':'#2563eb',borderRadius:2}}/></div>
+                    <span style={{fontSize:10,color:'#64748b'}}>{c.uses}/{c.max}</span>
+                  </div>
+                </td>
+                <td style={{padding:'11px 14px',color:'#64748b',fontSize:11}}>{c.vence}</td>
+                <td style={{padding:'11px 14px'}}><span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:3,color:c.activo?'#16a34a':'#64748b',background:c.activo?'#f0fdf4':'#f1f5f9'}}>{c.activo?'Activo':'Inactivo'}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const UsuariosAdmin = () => {
+  const users=[
+    {id:1,name:'Grey Pullice',email:'grey@email.com',role:'cliente',veh:1,since:'01/12/25'},
+    {id:2,name:'Ana Mora',email:'ana.mora@email.com',role:'cliente',veh:1,since:'15/11/25'},
+    {id:3,name:'Carlos Mendoza',email:'cmendoza@seauto.com',role:'tecnico',veh:0,since:'01/06/24'},
+    {id:4,name:'Ana Torres',email:'atorres@seauto.com',role:'tecnico',veh:0,since:'15/08/24'},
+    {id:5,name:'Luis Vega',email:'lvega@email.com',role:'cliente',veh:1,since:'10/01/26'},
+    {id:6,name:'Pedro Alcívar',email:'palcivar@email.com',role:'cliente',veh:1,since:'13/01/26'},
+  ];
+  const rb={cliente:{c:'#2563eb',bg:'#eff6ff',lb:'Cliente'},tecnico:{c:'#ea580c',bg:'#fff7ed',lb:'Técnico'},admin:{c:'#7c3aed',bg:'#f5f3ff',lb:'Admin'}};
+  return (
+    <div style={{padding:22}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+        <div style={{fontSize:18,fontWeight:700,color:'#1e293b'}}>Usuarios del sistema</div>
+        <button style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:'7px 14px',fontSize:12,fontWeight:600,cursor:'pointer'}}>+ Invitar usuario</button>
+      </div>
+      <div style={{background:'white',borderRadius:9,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:12}}>
+          <thead><tr style={{background:'#f8fafc',borderBottom:'2px solid #e2e8f0'}}>
+            {['Nombre','Email','Rol','Vehículos','Desde','Estado'].map(h=><th key={h} style={{textAlign:'left',padding:'9px 14px',color:'#64748b',fontWeight:600,fontSize:10,textTransform:'uppercase'}}>{h}</th>)}
+          </tr></thead>
+          <tbody>
+            {users.map(u=>{const r=rb[u.role]; return (
+              <tr key={u.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                <td style={{padding:'11px 14px',fontWeight:600,color:'#1e293b'}}>{u.name}</td>
+                <td style={{padding:'11px 14px',color:'#64748b'}}>{u.email}</td>
+                <td style={{padding:'11px 14px'}}><span style={{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:4,color:r.c,background:r.bg}}>{r.lb}</span></td>
+                <td style={{padding:'11px 14px',textAlign:'center',color:'#374151'}}>{u.veh||'—'}</td>
+                <td style={{padding:'11px 14px',color:'#64748b'}}>{u.since}</td>
+                <td style={{padding:'11px 14px'}}><span style={{fontSize:10,fontWeight:600,padding:'2px 8px',borderRadius:4,color:'#16a34a',background:'#f0fdf4'}}>Activo</span></td>
+              </tr>
+            );})}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+const AdminApp = () => {
+  const [page,sp]=React.useState('dashboard');
+  const [veh,sv]=React.useState(A_VEH);
+  return (
+    <div style={{display:'flex',height:'100%'}}>
+      <AdminSidebar active={page} onChange={sp}/>
+      <div style={{flex:1,overflowY:'auto',background:'#f8fafc'}}>
+        {page==='dashboard'&&<AdminDash vehicles={veh}/>}
+        {page==='vehiculos'&&<VehAdmin vehicles={veh} onSC={(id,s)=>sv(veh.map(v=>v.id===id?{...v,status:s}:v))}/>}
+        {page==='proformas'&&<ProformaAdmin vehicles={veh} brokers={BRKRS}/>}
+        {page==='brokers'&&<BrokersAdmin/>}
+        {page==='notifs'&&<NotifsAdmin/>}
+        {page==='cupones'&&<CuponesAdmin/>}
+        {page==='usuarios'&&<UsuariosAdmin/>}
+      </div>
+    </div>
+  );
+};
+window.AdminApp = AdminApp;
+window.A_VEH = A_VEH;
+window.BRKRS = BRKRS;
+window.AS = AS;
+</script>
+
+<!-- ═══════════════════════════════════════════════ TECH APP ═══ -->
+<script type="text/babel">
+const T_JOBS = [
+  {id:1,ticket:'TK-2026-0023',placa:'ABJ-1583',cliente:'Grey Pullice',marca:'BYD',modelo:'Yuan Pro',status:'En reparación',pri:'alta',ingreso:'11/01/26',seguro:'TP Seguros',
+   trabajos:[{id:1,t:'Puerta pos RH',ok:true},{id:2,t:'Retrovisor RH',ok:false},{id:3,t:'Guardafango del LH',ok:false},{id:4,t:'Punta del LH',ok:false}]},
+  {id:2,ticket:'TK-2026-0025',placa:'MRT-9012',cliente:'Luis Vega',marca:'Chevrolet',modelo:'Aveo',status:'Valorar siniestro',pri:'alta',ingreso:'13/01/26',seguro:'AIG Ecuador',
+   trabajos:[{id:1,t:'Valorización pendiente',ok:false}]},
+  {id:3,ticket:'TK-2026-0024',placa:'PCG-4421',cliente:'Ana Mora',marca:'Toyota',modelo:'Corolla',status:'En diagnóstico',pri:'media',ingreso:'12/01/26',seguro:'',
+   trabajos:[{id:1,t:'Revisión completa',ok:false}]},
+];
+const TS = {repair:{label:'En reparación',c:'#ea580c',bg:'#fff7ed'},siniestro:{label:'Valorar siniestro',c:'#7c3aed',bg:'#f5f3ff'},diagnosis:{label:'Diagnóstico',c:'#2563eb',bg:'#eff6ff'},ready:{label:'Listo',c:'#16a34a',bg:'#f0fdf4'}};
+
+const TechSidebar = ({active,onChange,name}) => {
+  const items=[['jobs','🔧','Mis trabajos'],['sinval','📸','Valorar siniestros'],['hist','📋','Historial']];
+  return (
+    <div style={{width:210,background:'#1e3a5f',minHeight:'100%',display:'flex',flexDirection:'column',flexShrink:0}}>
+      <div style={{padding:'18px 16px 14px',borderBottom:'1px solid rgba(255,255,255,.1)'}}>
+        <div style={{fontSize:20,fontWeight:800,color:'white',letterSpacing:'-0.5px'}}>SeAuto</div>
+        <div style={{fontSize:10,color:'rgba(255,255,255,.45)',marginTop:2,textTransform:'uppercase',letterSpacing:1}}>Panel Técnico</div>
+      </div>
+      <nav style={{flex:1,padding:'6px 0'}}>
+        {items.map(([id,ic,lb])=>(
+          <div key={id} onClick={()=>onChange(id)} style={{display:'flex',alignItems:'center',gap:9,padding:'9px 16px',cursor:'pointer',background:active===id?'rgba(255,255,255,.12)':'transparent',borderLeft:`3px solid ${active===id?'#60a5fa':'transparent'}`,color:active===id?'white':'rgba(255,255,255,.6)',fontSize:13,fontWeight:active===id?600:400}}>
+            <span style={{fontSize:15}}>{ic}</span>{lb}
+          </div>
+        ))}
+      </nav>
+      <div style={{padding:'12px 16px',borderTop:'1px solid rgba(255,255,255,.08)'}}>
+        <div style={{fontSize:12,color:'rgba(255,255,255,.7)',fontWeight:600}}>{name}</div>
+        <div style={{fontSize:10,color:'rgba(255,255,255,.3)'}}>Técnico Senior</div>
+      </div>
+    </div>
+  );
+};
+
+const MisTrabajos = ({jobs,onSel}) => (
+  <div style={{padding:22}}>
+    <div style={{fontSize:18,fontWeight:700,color:'#1e293b',marginBottom:6}}>Mis Trabajos Asignados</div>
+    <div style={{fontSize:12,color:'#64748b',marginBottom:18}}>21 de enero de 2026</div>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
+      {[['Asignados',jobs.length,'#2563eb'],['Urgentes',jobs.filter(j=>j.pri==='alta').length,'#ea580c'],['Siniestros',jobs.filter(j=>j.status.toLowerCase().includes('siniestro')||j.status.toLowerCase().includes('valorar')).length,'#7c3aed']].map(([lb,n,col])=>(
+        <div key={lb} style={{background:'white',borderRadius:8,padding:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)',borderTop:`3px solid ${col}`}}>
+          <div style={{fontSize:24,fontWeight:800,color:col}}>{n}</div><div style={{fontSize:11,color:'#64748b',marginTop:2}}>{lb}</div>
+        </div>
+      ))}
+    </div>
+    <div style={{display:'flex',flexDirection:'column',gap:10}}>
+      {jobs.map(j=>{const s=TS[j.status]||TS.diagnosis; return (
+        <div key={j.id} onClick={()=>onSel(j)} style={{background:'white',borderRadius:9,padding:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)',cursor:'pointer',display:'flex',gap:12,alignItems:'center',borderLeft:`3px solid ${s.c}`}}>
+          <div style={{flex:1}}>
+            <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:4,flexWrap:'wrap'}}>
+              <span style={{fontSize:12,fontWeight:700,color:'#1d4ed8'}}>{j.ticket}</span>
+              <span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:3,color:s.c,background:s.bg}}>{s.label}</span>
+              {j.pri==='alta'&&<span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:3,color:'#dc2626',background:'#fef2f2'}}>↑ Alta prioridad</span>}
+            </div>
+            <div style={{fontSize:13,fontWeight:600,color:'#1e293b'}}>{j.marca} {j.modelo} <span style={{color:'#64748b',fontSize:11}}>· {j.placa}</span></div>
+            <div style={{fontSize:11,color:'#64748b',marginTop:2}}>Cliente: {j.cliente} · Ingreso: {j.ingreso}{j.seguro&&` · ${j.seguro}`}</div>
+          </div>
+          <div style={{color:'#cbd5e1',fontSize:20}}>›</div>
+        </div>
+      );})}
+    </div>
+  </div>
+);
+
+const DetalleJob = ({job,onBack}) => {
+  const [ts,sts]=React.useState(job.trabajos);
+  const toggle=(id)=>sts(ts.map(t=>t.id===id?{...t,ok:!t.ok}:t));
+  const s=TS[job.status]||TS.diagnosis;
+  const done=ts.filter(t=>t.ok).length; const total=ts.length;
+  return (
+    <div style={{padding:22}}>
+      <button onClick={onBack} style={{background:'none',border:'none',color:'#2563eb',cursor:'pointer',fontSize:12,fontWeight:600,padding:0,marginBottom:14,display:'flex',alignItems:'center',gap:4}}>← Volver a mis trabajos</button>
+      <div style={{display:'flex',gap:10,alignItems:'center',marginBottom:18}}>
+        <div style={{fontSize:18,fontWeight:700,color:'#1e293b'}}>{job.ticket}</div>
+        <span style={{fontSize:11,fontWeight:600,padding:'3px 9px',borderRadius:4,color:s.c,background:s.bg}}>{s.label}</span>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+        <div style={{background:'white',borderRadius:9,padding:18,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:11,fontWeight:700,color:'#1e293b',marginBottom:12,textTransform:'uppercase',letterSpacing:.5}}>Datos del vehículo</div>
+          {[['Ticket',job.ticket],['Placa',job.placa],['Vehículo',`${job.marca} ${job.modelo}`],['Cliente',job.cliente],['Ingreso',job.ingreso],['Seguro',job.seguro||'Sin seguro']].map(([k,v])=>(
+            <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #f1f5f9',fontSize:12}}>
+              <span style={{color:'#64748b'}}>{k}</span><span style={{fontWeight:600,color:'#1e293b'}}>{v}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{background:'white',borderRadius:9,padding:18,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#1e293b',textTransform:'uppercase',letterSpacing:.5}}>Lista de trabajos</div>
+            <div style={{fontSize:11,color:'#64748b'}}>{done}/{total} completados</div>
+          </div>
+          <div style={{height:3,background:'#e2e8f0',borderRadius:2,marginBottom:12}}>
+            <div style={{height:'100%',width:`${total>0?(done/total)*100:0}%`,background:'#16a34a',borderRadius:2,transition:'width .3s'}}/>
+          </div>
+          {ts.map(t=>(
+            <div key={t.id} onClick={()=>toggle(t.id)} style={{display:'flex',gap:10,alignItems:'center',padding:'8px 0',borderBottom:'1px solid #f8fafc',cursor:'pointer'}}>
+              <div style={{width:18,height:18,borderRadius:4,border:`2px solid ${t.ok?'#16a34a':'#e2e8f0'}`,background:t.ok?'#16a34a':'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'white',fontSize:10,fontWeight:700}}>{t.ok?'✓':''}</div>
+              <span style={{fontSize:12,color:t.ok?'#16a34a':'#1e293b',textDecoration:t.ok?'line-through':'none'}}>{t.t}</span>
+            </div>
+          ))}
+          <div style={{marginTop:14}}>
+            <button onClick={()=>alert('Vehículo marcado como Listo para entrega')} style={{width:'100%',background:'#16a34a',color:'white',border:'none',borderRadius:7,padding:10,fontSize:12,fontWeight:700,cursor:'pointer'}}>
+              Marcar como listo para entrega
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SinValoracion = () => {
+  const [photos,sp]=React.useState([{id:1,lb:'Frente izquierdo'},{id:2,lb:'Lateral LH'},{id:3,lb:'Detalle puerta'}]);
+  const [items,si]=React.useState([{id:1,desc:'Guardafango del LH',tipo:'Pintura',precio:95},{id:2,desc:'Punta del LH',tipo:'Enderezado',precio:110}]);
+  const upd=(id,k,v)=>si(items.map(it=>it.id===id?{...it,[k]:v}:it));
+  const sub=items.reduce((s,i)=>s+(parseFloat(i.precio)||0),0);
+  const ti={padding:'5px 7px',border:'1px solid #e2e8f0',borderRadius:4,fontSize:12,fontFamily:'IBM Plex Sans,sans-serif',width:'100%',boxSizing:'border-box'};
+  return (
+    <div style={{padding:22}}>
+      <div style={{fontSize:18,fontWeight:700,color:'#1e293b',marginBottom:8}}>Valorización de Siniestro</div>
+      <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:7,padding:10,marginBottom:18,fontSize:12,color:'#9a3412'}}>📋 Revisa las fotos del cliente y completa la estimación de costos.</div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:18}}>
+        <div>
+          <div style={{background:'white',borderRadius:9,padding:16,marginBottom:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#1e293b',marginBottom:12,textTransform:'uppercase',letterSpacing:.5}}>Fotos del cliente</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+              {photos.map(p=>(
+                <div key={p.id} style={{aspectRatio:'4/3',background:'#e2e8f0',borderRadius:6,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:10,color:'#64748b',fontFamily:'monospace',textAlign:'center',gap:4,padding:6}}>
+                  <span style={{fontSize:20}}>📷</span>{p.lb}
+                </div>
+              ))}
+              <div onClick={()=>sp([...photos,{id:Date.now(),lb:'Nueva foto'}])} style={{aspectRatio:'4/3',border:'2px dashed #cbd5e1',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#94a3b8',fontSize:12}}>+ foto</div>
+            </div>
+          </div>
+          <div style={{background:'white',borderRadius:9,padding:16,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#1e293b',marginBottom:10}}>DATOS DEL SINIESTRO</div>
+            {[['Ticket','TK-2026-0025'],['Placa','MRT-9012'],['Cliente','Luis Vega'],['Seguro','AIG Ecuador'],['Fecha reporte','13/01/26']].map(([k,v])=>(
+              <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #f1f5f9',fontSize:11}}>
+                <span style={{color:'#64748b'}}>{k}</span><span style={{fontWeight:600}}>{v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div>
+          <div style={{background:'white',borderRadius:9,padding:16,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#1e293b',marginBottom:12,textTransform:'uppercase',letterSpacing:.5}}>Estimación de costos</div>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12,marginBottom:10}}>
+              <thead><tr style={{borderBottom:'2px solid #e2e8f0'}}><th style={{textAlign:'left',padding:'5px 0',color:'#64748b',fontWeight:600,fontSize:11}}>Descripción</th><th style={{padding:'5px',color:'#64748b',fontWeight:600,fontSize:11,width:100}}>Tipo</th><th style={{textAlign:'right',padding:'5px 0',color:'#64748b',fontWeight:600,fontSize:11,width:70}}>Precio</th></tr></thead>
+              <tbody>
+                {items.map(it=>(
+                  <tr key={it.id} style={{borderBottom:'1px solid #f1f5f9'}}>
+                    <td style={{padding:'4px 0'}}><input value={it.desc} onChange={e=>upd(it.id,'desc',e.target.value)} style={ti}/></td>
+                    <td style={{padding:'3px 5px'}}><select value={it.tipo} onChange={e=>upd(it.id,'tipo',e.target.value)} style={ti}>{['Pintura','Enderezado','Cambio pieza','Mecánica','Otro'].map(t=><option key={t}>{t}</option>)}</select></td>
+                    <td style={{padding:'3px 0'}}><input type="number" value={it.precio} onChange={e=>upd(it.id,'precio',e.target.value)} style={{...ti,textAlign:'right'}}/></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <button onClick={()=>si([...items,{id:Date.now(),desc:'',tipo:'Pintura',precio:0}])} style={{background:'none',border:'1px dashed #cbd5e1',borderRadius:4,padding:'4px 10px',fontSize:11,cursor:'pointer',color:'#64748b',marginBottom:10}}>+ Agregar ítem</button>
+            <div style={{borderTop:'2px solid #e2e8f0',paddingTop:8}}>
+              {[['Subtotal',sub],['IVA 15%',sub*.15],['Total',sub*1.15]].map(([lb,val])=>(
+                <div key={lb} style={{display:'flex',justifyContent:'space-between',padding:'3px 0',fontSize:12}}>
+                  <span style={{color:'#64748b',fontWeight:lb==='Total'?700:400}}>{lb}</span>
+                  <span style={{fontWeight:lb==='Total'?800:400,color:lb==='Total'?'#1e3a5f':'#374151'}}>${val.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            <button style={{flex:1,background:'white',color:'#374151',border:'1px solid #e2e8f0',borderRadius:7,padding:11,fontSize:12,fontWeight:600,cursor:'pointer'}}>Guardar borrador</button>
+            <button style={{flex:1,background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:11,fontSize:12,fontWeight:700,cursor:'pointer'}}>Enviar valorización</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TecnicoApp = () => {
+  const [page,sp]=React.useState('jobs');
+  const [sel,ss]=React.useState(null);
+  return (
+    <div style={{display:'flex',height:'100%'}}>
+      <TechSidebar active={page} onChange={p=>{sp(p);ss(null);}} name="Carlos Mendoza"/>
+      <div style={{flex:1,overflowY:'auto',background:'#f8fafc'}}>
+        {page==='jobs'&&!sel&&<MisTrabajos jobs={T_JOBS} onSel={ss}/>}
+        {page==='jobs'&&sel&&<DetalleJob job={sel} onBack={()=>ss(null)}/>}
+        {page==='sinval'&&<SinValoracion/>}
+        {page==='hist'&&<div style={{padding:22}}><div style={{fontSize:18,fontWeight:700,color:'#1e293b',marginBottom:14}}>Historial de trabajos</div><div style={{background:'white',borderRadius:9,padding:20,boxShadow:'0 1px 3px rgba(0,0,0,.06)',color:'#64748b',fontSize:13}}>Aquí aparecerán los trabajos completados anteriormente.</div></div>}
+      </div>
+    </div>
+  );
+};
+window.TecnicoApp = TecnicoApp;
+window.T_JOBS = T_JOBS;
+window.TS = TS;
+</script>
+
+<!-- ═══════════════════════════════════════════ MOBILE ADMIN+TECH ═══ -->
+<script type="text/babel">
+const MHdr = ({title,sub,onBack}) => (
+  <div style={{background:'#1e3a5f',color:'white',padding:'10px 16px',flexShrink:0,display:'flex',alignItems:'center',gap:10}}>
+    {onBack&&<button onClick={onBack} style={{background:'none',border:'none',color:'white',fontSize:18,cursor:'pointer',padding:0,lineHeight:1}}>←</button>}
+    <div>
+      <div style={{fontSize:9,opacity:.6,letterSpacing:1,textTransform:'uppercase'}}>{sub||'SeAuto'}</div>
+      <div style={{fontSize:15,fontWeight:700}}>{title}</div>
+    </div>
+  </div>
+);
+const MNav = ({tab,onChange,items}) => (
+  <div style={{background:'white',borderTop:'1px solid #e2e8f0',display:'flex',flexShrink:0}}>
+    {items.map(([id,ic,lb])=>(
+      <button key={id} onClick={()=>onChange(id)} style={{flex:1,border:'none',background:'none',padding:'7px 0',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+        <span style={{fontSize:17}}>{ic}</span>
+        <span style={{fontSize:9,fontWeight:tab===id?700:400,color:tab===id?'#1d4ed8':'#94a3b8'}}>{lb}</span>
+      </button>
+    ))}
+  </div>
+);
+const minp = {width:'100%',padding:'9px 12px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,boxSizing:'border-box'};
+const mlbl = {fontSize:11,fontWeight:600,color:'#475569',display:'block',marginBottom:3};
+
+/* ── Admin Mobile Screens ── */
+const AMHome = ({veh}) => {
+  const stats=[['En taller',veh.filter(v=>v.status!=='Entregado').length,'#2563eb'],['Listos',veh.filter(v=>v.status==='Listo para entrega').length,'#16a34a'],['Recibidos',veh.filter(v=>v.status==='Recibido').length,'#ea580c'],['Entregados',veh.filter(v=>v.status==='Entregado').length,'#64748b']];
+  return (
+    <div>
+      <MHdr title="Dashboard" sub="Admin SeAuto"/>
+      <div style={{padding:14}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+          {stats.map(([lb,n,col])=>(
+            <div key={lb} style={{background:'white',borderRadius:8,padding:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)',borderTop:`3px solid ${col}`}}>
+              <div style={{fontSize:26,fontWeight:800,color:col}}>{n}</div>
+              <div style={{fontSize:11,color:'#64748b',marginTop:2}}>{lb}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{background:'white',borderRadius:9,padding:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#1e293b',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Actividad reciente</div>
+          {veh.slice(0,4).map(v=>(
+            <div key={v.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 0',borderBottom:'1px solid #f1f5f9'}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:600,color:'#1e293b'}}>{v.placa} — {v.marca} {v.modelo}</div>
+                <div style={{fontSize:11,color:'#64748b'}}>{v.cliente} · {v.ticket}</div>
+              </div>
+              <span style={{fontSize:10,fontWeight:600,padding:'2px 6px',borderRadius:3,color:'#1d4ed8',background:'#eff6ff',marginLeft:8,whiteSpace:'nowrap'}}>{v.status}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AMTaller = ({veh,onSel,onSC}) => {
+  const [eid,se]=React.useState(null);
+  const [editVal,sev]=React.useState('');
+  return (
+    <div>
+      <MHdr title="Vehículos en taller" sub="Admin SeAuto"/>
+      <div style={{padding:14}}>
+        {veh.map(v=>{ return (
+          <div key={v.id} style={{background:'white',borderRadius:9,padding:14,marginBottom:10,boxShadow:'0 1px 3px rgba(0,0,0,.06)',borderLeft:'3px solid #2563eb'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:700,color:'#1e293b'}}>{v.placa}</div>
+                <div style={{fontSize:12,color:'#64748b'}}>{v.marca} {v.modelo} · {v.año}</div>
+                <div style={{fontSize:11,color:'#94a3b8'}}>{v.cliente} · {v.ticket}</div>
+              </div>
+              <span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:3,color:'#1d4ed8',background:'#eff6ff',whiteSpace:'nowrap'}}>{v.status}</span>
+            </div>
+            {eid===v.id
+              ? <div style={{display:'flex',gap:8}}>
+                  <input value={editVal} onChange={e=>sev(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){onSC(v.id,editVal);se(null);}}} autoFocus
+                    style={{flex:1,padding:'7px 8px',border:'1px solid #2563eb',borderRadius:6,fontSize:12}} placeholder="Escribir estado..."/>
+                  <button onClick={()=>{onSC(v.id,editVal);se(null);}} style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:6,padding:'7px 12px',fontSize:12,cursor:'pointer',fontWeight:600}}>OK</button>
+                  <button onClick={()=>se(null)} style={{background:'none',border:'1px solid #e2e8f0',borderRadius:6,padding:'7px 10px',fontSize:12,cursor:'pointer'}}>✕</button>
+                </div>
+              : <div style={{display:'flex',gap:8}}>
+                  <button onClick={()=>{se(v.id);sev(v.status);}} style={{flex:1,background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:6,padding:'7px',fontSize:12,cursor:'pointer',fontWeight:600}}>Actualizar estado</button>
+                  <button onClick={()=>onSel(v)} style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:6,padding:'7px 14px',fontSize:12,cursor:'pointer',fontWeight:600}}>Ver</button>
+                </div>
+            }
+          </div>
+        );})}
+      </div>
+    </div>
+  );
+};
+
+const AMVehDet = ({v,onBack}) => {
+  const WAS=window.AS||{};
+  const s=WAS[v.status]||{label:v.status,c:'#64748b',bg:'#f1f5f9'};
+  return (
+    <div>
+      <MHdr title={v.placa} sub="Detalle vehículo" onBack={onBack}/>
+      <div style={{padding:14}}>
+        <div style={{background:s.bg,border:`1px solid ${s.c}30`,borderRadius:8,padding:10,marginBottom:12,display:'flex',gap:8,alignItems:'center'}}>
+          <div style={{width:8,height:8,borderRadius:'50%',background:s.c,flexShrink:0}}/>
+          <div><div style={{fontSize:12,fontWeight:700,color:s.c}}>{s.label}</div><div style={{fontSize:11,color:'#64748b'}}>Ticket {v.ticket}</div></div>
+        </div>
+        <div style={{background:'white',borderRadius:9,padding:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          {[['Placa',v.placa],['Vehículo',`${v.marca} ${v.modelo}`],['Año',v.año],['Color',v.color],['Cliente',v.cliente],['Técnico',v.tecnico],['Ingreso',v.ingreso],['Broker',v.broker||'—'],['Seguro',v.seguro||'—']].map(([k,val])=>(
+            <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:'1px solid #f1f5f9',fontSize:12}}>
+              <span style={{color:'#64748b'}}>{k}</span><span style={{fontWeight:600,color:'#1e293b'}}>{val}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AMProforma = ({veh}) => {
+  const WBR=window.BRKRS||[];
+  const [sv,ssv]=React.useState(veh[0]);
+  const [items,si]=React.useState([{id:1,desc:'',precio:0},{id:2,desc:'',precio:0}]);
+  const upd=(id,k,v)=>si(items.map(it=>it.id===id?{...it,[k]:v}:it));
+  const sub=items.reduce((s,i)=>s+(parseFloat(i.precio)||0),0);
+  return (
+    <div>
+      <MHdr title="Nueva Proforma" sub="Admin SeAuto"/>
+      <div style={{padding:14}}>
+        <div style={{background:'white',borderRadius:9,padding:14,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{marginBottom:10}}><label style={mlbl}>Vehículo</label>
+            <select style={minp} value={sv?.id} onChange={e=>ssv(veh.find(v=>v.id===parseInt(e.target.value)))}>
+              {veh.map(v=><option key={v.id} value={v.id}>{v.placa} — {v.cliente}</option>)}
+            </select>
+          </div>
+          <div style={{marginBottom:10}}><label style={mlbl}>Broker / Seguro</label>
+            <select style={minp}>{WBR.map(b=><option key={b.id}>{b.nombre}</option>)}<option>Sin seguro</option></select>
+          </div>
+          {sv&&<div style={{fontSize:11,color:'#64748b',background:'#f8fafc',borderRadius:6,padding:'8px 10px'}}>
+            {sv.marca} {sv.modelo} · {sv.año} · {sv.color} — {sv.cliente}
+          </div>}
+        </div>
+        <div style={{background:'white',borderRadius:9,padding:14,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#1e293b',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Trabajos y precios</div>
+          {items.map((it,i)=>(
+            <div key={it.id} style={{display:'flex',gap:8,marginBottom:8,alignItems:'center'}}>
+              <span style={{fontSize:10,color:'#94a3b8',width:14,flexShrink:0}}>{i+1}</span>
+              <input value={it.desc} onChange={e=>upd(it.id,'desc',e.target.value)} style={{...minp,flex:1,padding:'7px 10px'}} placeholder="Descripción del trabajo"/>
+              <input type="number" value={it.precio||''} onChange={e=>upd(it.id,'precio',e.target.value)} style={{...minp,width:72,padding:'7px 8px',textAlign:'right'}} placeholder="$0"/>
+            </div>
+          ))}
+          <button onClick={()=>si([...items,{id:Date.now(),desc:'',precio:0}])} style={{background:'none',border:'1px dashed #cbd5e1',borderRadius:5,padding:'5px',fontSize:11,cursor:'pointer',color:'#64748b',width:'100%',marginTop:2}}>+ Agregar ítem</button>
+          <div style={{borderTop:'2px solid #e2e8f0',marginTop:12,paddingTop:8}}>
+            {[['Subtotal',sub],['IVA 15%',sub*.15],['Total',sub*1.15]].map(([lb,val])=>(
+              <div key={lb} style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:2}}>
+                <span style={{color:'#64748b',fontWeight:lb==='Total'?700:400}}>{lb}</span>
+                <span style={{fontWeight:lb==='Total'?800:400,color:lb==='Total'?'#1e3a5f':'#374151'}}>${val.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button style={{flex:1,background:'white',color:'#374151',border:'1px solid #e2e8f0',borderRadius:7,padding:11,fontSize:13,fontWeight:600,cursor:'pointer'}}>Borrador</button>
+          <button style={{flex:1,background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:11,fontSize:13,fontWeight:700,cursor:'pointer'}}>Emitir</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AMNotifs = () => {
+  const [t,st]=React.useState(''); const [m,sm]=React.useState(''); const [ok,so]=React.useState(false);
+  if(ok) return (
+    <div>
+      <MHdr title="Notificaciones" sub="Admin SeAuto"/>
+      <div style={{padding:40,textAlign:'center'}}>
+        <div style={{fontSize:44,marginBottom:12}}>✅</div>
+        <div style={{fontSize:14,fontWeight:700,color:'#16a34a',marginBottom:6}}>¡Notificación enviada!</div>
+        <div style={{fontSize:12,color:'#64748b',marginBottom:20}}>Enviada a 47 clientes</div>
+        <button onClick={()=>{so(false);st('');sm('');}} style={{background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:'9px 20px',fontSize:13,fontWeight:600,cursor:'pointer'}}>Nueva notificación</button>
+      </div>
+    </div>
+  );
+  return (
+    <div>
+      <MHdr title="Notificaciones" sub="Admin SeAuto"/>
+      <div style={{padding:14}}>
+        <div style={{background:'white',borderRadius:9,padding:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{marginBottom:10}}><label style={mlbl}>Título</label><input style={minp} value={t} onChange={e=>st(e.target.value)} placeholder="Ej. Oferta especial"/></div>
+          <div style={{marginBottom:10}}><label style={mlbl}>Mensaje</label><textarea style={{...minp,resize:'vertical',minHeight:88}} value={m} onChange={e=>sm(e.target.value)} placeholder="Escribe el mensaje para los clientes..."/></div>
+          <div style={{marginBottom:14}}><label style={mlbl}>Destinatarios</label>
+            <select style={minp}><option>Todos los clientes (47)</option><option>Con vehículo en taller</option><option>Clientes activos</option></select>
+          </div>
+          <button onClick={()=>so(true)} style={{width:'100%',background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:11,fontSize:13,fontWeight:700,cursor:'pointer'}}>Enviar notificación</button>
+        </div>
+        <div style={{background:'white',borderRadius:9,padding:14,marginTop:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#1e293b',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Recientes</div>
+          {[{title:'Promoción de verano',date:'15/01/26',n:42},{title:'Nuevo servicio',date:'10/01/26',n:38}].map(n=>(
+            <div key={n.title} style={{padding:'8px 0',borderBottom:'1px solid #f1f5f9'}}>
+              <div style={{fontSize:12,fontWeight:600,color:'#1e293b'}}>{n.title}</div>
+              <div style={{display:'flex',gap:10,marginTop:3}}><span style={{fontSize:10,color:'#94a3b8'}}>{n.date}</span><span style={{fontSize:10,color:'#2563eb',fontWeight:600}}>{n.n} destinatarios</span></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const AMMas = () => (
+  <div>
+    <MHdr title="Más opciones" sub="Admin SeAuto"/>
+    <div style={{padding:14}}>
+      {[{title:'Gestión',items:[['🛡','Brokers / Seguros'],['🎟','Cupones y códigos'],['👥','Usuarios']]},{title:'Sistema',items:[['📊','Reportes'],['⚙️','Configuración']]}].map(sec=>(
+        <div key={sec.title} style={{background:'white',borderRadius:9,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)',overflow:'hidden'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#94a3b8',padding:'9px 14px 4px',textTransform:'uppercase',letterSpacing:.5}}>{sec.title}</div>
+          {sec.items.map(([ic,lb])=>(
+            <div key={lb} style={{display:'flex',alignItems:'center',gap:12,padding:'11px 14px',borderTop:'1px solid #f1f5f9',cursor:'pointer'}}>
+              <span style={{fontSize:18}}>{ic}</span>
+              <span style={{fontSize:13,color:'#1e293b',fontWeight:500,flex:1}}>{lb}</span>
+              <span style={{color:'#cbd5e1',fontSize:16}}>›</span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const AdminMobileApp = () => {
+  const [tab,st]=React.useState('inicio');
+  const [veh,sv]=React.useState(window.A_VEH||[]);
+  const [selV,ssV]=React.useState(null);
+  const tabs=[['inicio','▦','Inicio'],['taller','🚗','Taller'],['proforma','📄','Proforma'],['notifs','🔔','Notifs'],['mas','⋯','Más']];
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',background:'#f8fafc'}}>
+      <div style={{flex:1,overflowY:'auto'}}>
+        {tab==='inicio'&&<AMHome veh={veh}/>}
+        {tab==='taller'&&(!selV?<AMTaller veh={veh} onSel={ssV} onSC={(id,s)=>sv(veh.map(v=>v.id===id?{...v,status:s}:v))}/>:<AMVehDet v={selV} onBack={()=>ssV(null)}/>)}
+        {tab==='proforma'&&<AMProforma veh={veh}/>}
+        {tab==='notifs'&&<AMNotifs/>}
+        {tab==='mas'&&<AMMas/>}
+      </div>
+      <MNav tab={tab} onChange={t=>{st(t);ssV(null);}} items={tabs}/>
+    </div>
+  );
+};
+window.AdminMobileApp = AdminMobileApp;
+
+/* ── Técnico Mobile Screens ── */
+const TM_Jobs = ({jobs,onSel}) => {
+  const WTS=window.TS||{};
+  return (
+    <div>
+      <MHdr title="Mis Trabajos" sub="Panel Técnico"/>
+      <div style={{padding:14}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
+          {[['Asignados',jobs.length,'#2563eb'],['Urgentes',jobs.filter(j=>j.pri==='alta').length,'#dc2626']].map(([lb,n,col])=>(
+            <div key={lb} style={{background:'white',borderRadius:8,padding:14,boxShadow:'0 1px 3px rgba(0,0,0,.06)',borderTop:`3px solid ${col}`}}>
+              <div style={{fontSize:26,fontWeight:800,color:col}}>{n}</div>
+              <div style={{fontSize:11,color:'#64748b',marginTop:2}}>{lb}</div>
+            </div>
+          ))}
+        </div>
+        {jobs.map(j=>{const s=WTS[j.status]||{label:j.status,c:'#64748b',bg:'#f1f5f9'}; return (
+          <div key={j.id} onClick={()=>onSel(j)} style={{background:'white',borderRadius:9,padding:14,marginBottom:10,boxShadow:'0 1px 3px rgba(0,0,0,.06)',cursor:'pointer',borderLeft:`3px solid ${s.c}`}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:5}}>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:'#1d4ed8'}}>{j.ticket}</div>
+                <div style={{fontSize:13,fontWeight:600,color:'#1e293b'}}>{j.marca} {j.modelo}</div>
+                <div style={{fontSize:11,color:'#64748b'}}>{j.placa} · {j.cliente}</div>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3}}>
+                <span style={{fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:3,color:s.c,background:s.bg,whiteSpace:'nowrap'}}>{s.label}</span>
+                {j.pri==='alta'&&<span style={{fontSize:9,fontWeight:700,color:'#dc2626'}}>↑ URGENTE</span>}
+              </div>
+            </div>
+            <div style={{fontSize:11,color:'#64748b',marginTop:4}}>{j.trabajos.map(t=>t.t).join(' · ')}</div>
+          </div>
+        );})}
+      </div>
+    </div>
+  );
+};
+
+const TM_Det = ({job,onBack}) => {
+  const WTS=window.TS||{};
+  const [ts,sts]=React.useState(job.trabajos);
+  const toggle=id=>sts(ts.map(t=>t.id===id?{...t,ok:!t.ok}:t));
+  const s=WTS[job.status]||{label:job.status,c:'#64748b',bg:'#f1f5f9'};
+  const done=ts.filter(t=>t.ok).length;
+  return (
+    <div>
+      <MHdr title={job.ticket} sub="Detalle trabajo" onBack={onBack}/>
+      <div style={{padding:14}}>
+        <div style={{background:'white',borderRadius:9,padding:14,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{marginBottom:8}}>
+            {[['Placa',job.placa],['Vehículo',`${job.marca} ${job.modelo}`],['Cliente',job.cliente],['Seguro',job.seguro||'Sin seguro'],['Ingreso',job.ingreso]].map(([k,v])=>(
+              <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid #f1f5f9',fontSize:12}}>
+                <span style={{color:'#64748b'}}>{k}</span><span style={{fontWeight:600,color:'#1e293b'}}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <span style={{fontSize:10,fontWeight:600,padding:'3px 8px',borderRadius:4,color:s.c,background:s.bg}}>{s.label}</span>
+        </div>
+        <div style={{background:'white',borderRadius:9,padding:14,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#1e293b',textTransform:'uppercase',letterSpacing:.5}}>Lista de trabajos</div>
+            <div style={{fontSize:11,color:'#64748b'}}>{done}/{ts.length} listos</div>
+          </div>
+          <div style={{height:3,background:'#e2e8f0',borderRadius:2,marginBottom:12}}>
+            <div style={{height:'100%',width:`${ts.length>0?(done/ts.length)*100:0}%`,background:'#16a34a',borderRadius:2,transition:'width .3s'}}/>
+          </div>
+          {ts.map(t=>(
+            <div key={t.id} onClick={()=>toggle(t.id)} style={{display:'flex',gap:10,alignItems:'center',padding:'9px 0',borderBottom:'1px solid #f8fafc',cursor:'pointer'}}>
+              <div style={{width:20,height:20,borderRadius:5,border:`2px solid ${t.ok?'#16a34a':'#e2e8f0'}`,background:t.ok?'#16a34a':'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'white',fontSize:11,fontWeight:700}}>{t.ok?'✓':''}</div>
+              <span style={{fontSize:13,color:t.ok?'#16a34a':'#1e293b',textDecoration:t.ok?'line-through':'none'}}>{t.t}</span>
+            </div>
+          ))}
+        </div>
+        <button onClick={()=>alert('Marcado como listo para entrega')} style={{width:'100%',background:'#16a34a',color:'white',border:'none',borderRadius:8,padding:12,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+          ✓ Marcar como listo para entrega
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const TM_Sin = () => {
+  const [photos,sp]=React.useState([{id:1,lb:'Vista frontal'},{id:2,lb:'Detalle daño'}]);
+  const [items,si]=React.useState([{id:1,desc:'Guardafango LH',tipo:'Pintura',precio:95},{id:2,desc:'Punta del LH',tipo:'Enderezado',precio:110}]);
+  const upd=(id,k,v)=>si(items.map(it=>it.id===id?{...it,[k]:v}:it));
+  const sub=items.reduce((s,i)=>s+(parseFloat(i.precio)||0),0);
+  return (
+    <div>
+      <MHdr title="Valorar Siniestro" sub="Panel Técnico"/>
+      <div style={{padding:14}}>
+        <div style={{background:'#fff7ed',border:'1px solid #fed7aa',borderRadius:7,padding:9,marginBottom:12,fontSize:11,color:'#9a3412'}}>📋 Revisa las fotos y completa la estimación de costos.</div>
+        <div style={{background:'white',borderRadius:9,padding:14,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#1e293b',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Fotos del cliente</div>
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:4}}>
+            {photos.map(p=>(
+              <div key={p.id} style={{aspectRatio:'1',background:'#e2e8f0',borderRadius:6,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',fontSize:9,color:'#64748b',gap:2,padding:4,textAlign:'center'}}>
+                <span style={{fontSize:18}}>📷</span>{p.lb}
+              </div>
+            ))}
+            <div onClick={()=>sp([...photos,{id:Date.now(),lb:'Foto '+(photos.length+1)}])} style={{aspectRatio:'1',border:'2px dashed #cbd5e1',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#94a3b8',fontSize:12}}>+</div>
+          </div>
+        </div>
+        <div style={{background:'white',borderRadius:9,padding:14,marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#1e293b',marginBottom:10,textTransform:'uppercase',letterSpacing:.5}}>Estimación de costos</div>
+          {items.map((it,i)=>(
+            <div key={it.id} style={{marginBottom:10,paddingBottom:10,borderBottom:'1px solid #f1f5f9'}}>
+              <div style={{display:'flex',gap:6,marginBottom:5,alignItems:'center'}}>
+                <span style={{fontSize:10,color:'#94a3b8',width:14,flexShrink:0}}>{i+1}</span>
+                <input value={it.desc} onChange={e=>upd(it.id,'desc',e.target.value)} style={{...minp,flex:1,padding:'7px 9px'}} placeholder="Descripción"/>
+                <input type="number" value={it.precio||''} onChange={e=>upd(it.id,'precio',e.target.value)} style={{...minp,width:68,padding:'7px 8px',textAlign:'right'}} placeholder="$"/>
+              </div>
+              <div style={{paddingLeft:20}}>
+                <select value={it.tipo} onChange={e=>upd(it.id,'tipo',e.target.value)} style={{...minp,padding:'6px 8px'}}>
+                  {['Pintura','Enderezado','Cambio pieza','Mecánica','Otro'].map(t=><option key={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+          ))}
+          <button onClick={()=>si([...items,{id:Date.now(),desc:'',tipo:'Pintura',precio:0}])} style={{background:'none',border:'1px dashed #cbd5e1',borderRadius:5,padding:'5px',fontSize:11,cursor:'pointer',color:'#64748b',width:'100%',marginBottom:10}}>+ Agregar ítem</button>
+          <div style={{borderTop:'2px solid #e2e8f0',paddingTop:8}}>
+            {[['Subtotal',sub],['IVA 15%',sub*.15],['Total',sub*1.15]].map(([lb,val])=>(
+              <div key={lb} style={{display:'flex',justifyContent:'space-between',padding:'3px 0',fontSize:12}}>
+                <span style={{color:'#64748b',fontWeight:lb==='Total'?700:400}}>{lb}</span>
+                <span style={{fontWeight:lb==='Total'?800:400,color:lb==='Total'?'#1e3a5f':'#374151'}}>${val.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          <button style={{flex:1,background:'white',color:'#374151',border:'1px solid #e2e8f0',borderRadius:7,padding:11,fontSize:12,fontWeight:600,cursor:'pointer'}}>Borrador</button>
+          <button style={{flex:1,background:'#1d4ed8',color:'white',border:'none',borderRadius:7,padding:11,fontSize:12,fontWeight:700,cursor:'pointer'}}>Enviar</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const TecnicoMobileApp = () => {
+  const [tab,st]=React.useState('trabajos');
+  const [sel,ss]=React.useState(null);
+  const tabs=[['trabajos','🔧','Trabajos'],['siniestro','📸','Siniestro'],['perfil','👤','Perfil']];
+  return (
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden',background:'#f8fafc'}}>
+      <div style={{flex:1,overflowY:'auto'}}>
+        {tab==='trabajos'&&(!sel?<TM_Jobs jobs={window.T_JOBS||[]} onSel={ss}/>:<TM_Det job={sel} onBack={()=>ss(null)}/>)}
+        {tab==='siniestro'&&<TM_Sin/>}
+        {tab==='perfil'&&(
+          <div>
+            <MHdr title="Mi Perfil" sub="Panel Técnico"/>
+            <div style={{padding:14}}>
+              <div style={{background:'white',borderRadius:9,padding:20,textAlign:'center',marginBottom:12,boxShadow:'0 1px 3px rgba(0,0,0,.06)'}}>
+                <div style={{width:60,height:60,borderRadius:'50%',background:'#1e3a5f',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28,margin:'0 auto 10px',color:'white'}}>👷</div>
+                <div style={{fontSize:16,fontWeight:700,color:'#1e293b'}}>Carlos Mendoza</div>
+                <div style={{fontSize:12,color:'#64748b',marginTop:2}}>Técnico Senior · SeAuto</div>
+              </div>
+              {[['Email','cmendoza@seauto.com'],['Teléfono','+593 99 234 5678'],['Desde','Junio 2024'],['Trabajos completados','47']].map(([k,v])=>(
+                <div key={k} style={{background:'white',borderRadius:8,padding:'11px 14px',marginBottom:8,display:'flex',justifyContent:'space-between',boxShadow:'0 1px 3px rgba(0,0,0,.06)',fontSize:12}}>
+                  <span style={{color:'#64748b'}}>{k}</span><span style={{fontWeight:600,color:'#1e293b'}}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <MNav tab={tab} onChange={t=>{st(t);ss(null);}} items={tabs}/>
+    </div>
+  );
+};
+window.TecnicoMobileApp = TecnicoMobileApp;
+</script>
+
+<!-- ═══════════════════════════════════════════════ MAIN APP ═══ -->
+<script type="text/babel">
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "primaryColor": "#fafafa",
+  "sidebarColor": "#1e3a5f",
+  "accentColor": "#ea580c"
+}/*EDITMODE-END*/;
+
+const RoleBar = ({role,setRole,platform,setPlatform}) => (
+  <div style={{background:'#0f2040',padding:'7px 20px',display:'flex',alignItems:'center',gap:12,flexShrink:0}}>
+    <div style={{color:'white',fontWeight:800,fontSize:14,letterSpacing:'-0.3px',marginRight:4}}>SeAuto <span style={{fontWeight:400,fontSize:11,color:'rgba(255,255,255,.4)',letterSpacing:0}}>Prototipo</span></div>
+    <div style={{display:'flex',gap:3}}>
+      {[['cliente','📱 Cliente'],['admin','🖥 Admin'],['tecnico','🔧 Técnico']].map(([r,lb])=>(
+        <button key={r} onClick={()=>setRole(r)} style={{padding:'5px 13px',borderRadius:6,border:'none',cursor:'pointer',fontSize:12,fontWeight:600,background:role===r?'#2563eb':'rgba(255,255,255,.1)',color:role===r?'white':'rgba(255,255,255,.6)',transition:'all .15s'}}>
+          {lb}
+        </button>
+      ))}
+    </div>
+    {role !== 'cliente' && (
+      <div style={{display:'flex',gap:2,background:'rgba(255,255,255,.08)',borderRadius:7,padding:3,marginLeft:4}}>
+        {[['web','🖥 Web'],['mobile','📱 Móvil']].map(([p,lb])=>(
+          <button key={p} onClick={()=>setPlatform(p)} style={{padding:'4px 11px',borderRadius:5,border:'none',cursor:'pointer',fontSize:11,fontWeight:600,background:platform===p?'white':'transparent',color:platform===p?'#1e3a5f':'rgba(255,255,255,.55)',transition:'all .15s'}}>
+            {lb}
+          </button>
+        ))}
+      </div>
+    )}
+    <div style={{marginLeft:'auto',fontSize:10,color:'rgba(255,255,255,.3)'}}>Abril 2026</div>
+  </div>
+);
+
+const TweaksPanel = ({visible}) => {
+  const [cfg,sc]=React.useState(TWEAK_DEFAULTS);
+  if(!visible) return null;
+  return (
+    <div style={{position:'fixed',bottom:20,right:20,zIndex:9999,background:'white',borderRadius:10,padding:16,boxShadow:'0 8px 32px rgba(0,0,0,.15)',width:220,border:'1px solid #e2e8f0'}}>
+      <div style={{fontSize:12,fontWeight:700,color:'#1e293b',marginBottom:12}}>Tweaks</div>
+      {[['primaryColor','Color primario'],['sidebarColor','Color sidebar'],['accentColor','Color acento']].map(([k,lb])=>(
+        <div key={k} style={{marginBottom:10}}>
+          <div style={{fontSize:11,color:'#64748b',marginBottom:4}}>{lb}</div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <input type="color" value={cfg[k]} onChange={e=>{const nc={...cfg,[k]:e.target.value};sc(nc);window.parent.postMessage({type:'__edit_mode_set_keys',edits:nc},'*');}}
+              style={{width:32,height:28,border:'1px solid #e2e8f0',borderRadius:4,cursor:'pointer',padding:2}}/>
+            <span style={{fontSize:11,fontFamily:'monospace',color:'#374151'}}>{cfg[k]}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const PhoneShell = ({children}) => (
+  <div style={{width:380,height:'min(720px, calc(100vh - 60px))',background:'white',borderRadius:28,overflow:'hidden',boxShadow:'0 24px 64px rgba(0,0,0,.22)',display:'flex',flexDirection:'column',border:'7px solid #1e293b'}}>
+    <div style={{background:'#1e3a5f',padding:'6px 22px',display:'flex',justifyContent:'space-between',alignItems:'center',flexShrink:0}}>
+      <span style={{color:'white',fontSize:11,fontWeight:600}}>9:41</span>
+      <span style={{color:'white',fontSize:10,letterSpacing:1}}>▲▲▲ ■</span>
+    </div>
+    {children}
+  </div>
+);
+
+const App = () => {
+  const [role,sr]=React.useState(()=>localStorage.getItem('seauto_role')||'cliente');
+  const [platform,sp]=React.useState(()=>localStorage.getItem('seauto_platform')||'web');
+  const [tweaks,st]=React.useState(false);
+  const setRole=(r)=>{sr(r);localStorage.setItem('seauto_role',r);};
+  const setPlatform=(p)=>{sp(p);localStorage.setItem('seauto_platform',p);};
+
+  React.useEffect(()=>{
+    const handler=(e)=>{
+      if(e.data?.type==='__activate_edit_mode') st(true);
+      if(e.data?.type==='__deactivate_edit_mode') st(false);
+    };
+    window.addEventListener('message',handler);
+    window.parent.postMessage({type:'__edit_mode_available'},'*');
+    return ()=>window.removeEventListener('message',handler);
+  },[]);
+
+  const ClientC=window.ClientApp, AdminC=window.AdminApp, TechC=window.TecnicoApp;
+  const AdminMC=window.AdminMobileApp, TechMC=window.TecnicoMobileApp;
+  const isMobile = platform==='mobile';
+  const showPhone = role==='cliente' || isMobile;
+  const h='calc(100vh - 38px)';
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100vh',overflow:'hidden'}}>
+      <RoleBar role={role} setRole={setRole} platform={platform} setPlatform={setPlatform}/>
+      <div style={{height:h,overflow:'hidden',display:'flex',alignItems:showPhone?'center':'stretch',justifyContent:showPhone?'center':'stretch',background:showPhone?'#d8e4f0':'#f8fafc'}}>
+        {role==='cliente'&&(
+          <PhoneShell><ClientC/></PhoneShell>
+        )}
+        {role==='admin'&&!isMobile&&<div style={{width:'100%',height:'100%'}}><AdminC/></div>}
+        {role==='admin'&&isMobile&&(
+          <PhoneShell><AdminMC/></PhoneShell>
+        )}
+        {role==='tecnico'&&!isMobile&&<div style={{width:'100%',height:'100%'}}><TechC/></div>}
+        {role==='tecnico'&&isMobile&&(
+          <PhoneShell><TechMC/></PhoneShell>
+        )}
+      </div>
+      <TweaksPanel visible={tweaks}/>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+
+<template id="__bundler_thumbnail">
+<svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+  <rect width="120" height="80" fill="#1e3a5f"/>
+  <rect x="18" y="16" width="36" height="48" rx="4" fill="#2563eb" opacity=".8"/>
+  <rect x="22" y="22" width="28" height="36" rx="2" fill="white" opacity=".15"/>
+  <rect x="66" y="12" width="38" height="56" rx="3" fill="#0f2040"/>
+  <rect x="68" y="20" width="34" height="4" rx="2" fill="white" opacity=".6"/>
+  <rect x="68" y="28" width="25" height="3" rx="1" fill="white" opacity=".3"/>
+  <rect x="68" y="34" width="28" height="3" rx="1" fill="white" opacity=".3"/>
+  <rect x="68" y="40" width="20" height="3" rx="1" fill="white" opacity=".3"/>
+</svg>
+</template>
+</body>
+</html>
